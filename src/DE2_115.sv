@@ -1,5 +1,3 @@
-
-
 module DE2_115 (
 	input CLOCK_50,
 	input CLOCK2_50,
