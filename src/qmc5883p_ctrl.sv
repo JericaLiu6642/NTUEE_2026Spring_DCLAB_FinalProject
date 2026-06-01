@@ -1,7 +1,3 @@
-
-
-
-
 module qmc5883l_ctrl (
     input  wire        clk,       // 50 MHz system clock
     input  wire        rst_n,     // Active-low reset
@@ -16,6 +12,10 @@ module qmc5883l_ctrl (
     output reg  [15:0] mag_x,
     output reg  [15:0] mag_y,
     output reg  [15:0] mag_z,
+    output wire signed [31:0] mag_x_gauss_q16,
+    output wire signed [31:0] mag_y_gauss_q16,
+    output wire signed [31:0] mag_z_gauss_q16,
+    output wire        [31:0] range_gauss_q16,
 
     // Debug outputs — connect to LEDs or SignalTap in Quartus
     output wire [4:0]  dbg_state,
@@ -147,7 +147,7 @@ module qmc5883l_ctrl (
     localparam [1:0] CFG_ODR      = QMC_ODR_200HZ;
     localparam [1:0] CFG_OSR      = QMC_OSR_4;
     localparam [1:0] CFG_DSR      = QMC_DSR_1;
-    localparam [1:0] CFG_RANGE    = QMC_RANGE_2G;
+    localparam [1:0] CFG_RANGE    = QMC_RANGE_8G;
     localparam [1:0] CFG_SETRESET = QMC_SETRESET_ON;
 
     localparam [7:0] CTRL1_VALUE = {
@@ -163,7 +163,34 @@ module qmc5883l_ctrl (
         CFG_SETRESET   // bits [1:0]
     };
 
-    // ==============================================================================
+    // =========================================================================
+    // Convert raw two's-complement samples to signed Q16.16 Gauss.
+    // Each reciprocal is pre-scaled by 2^16 so synthesis uses a constant
+    // multiplier and shift instead of a combinational divider.
+    // =========================================================================
+    function automatic signed [31:0] raw_to_gauss_q16;
+        input signed [15:0] raw_value;
+        reg signed [47:0] scaled_value;
+        begin
+            case (CFG_RANGE)
+                QMC_RANGE_30G: scaled_value = raw_value * 32'sd4_294_967;
+                QMC_RANGE_12G: scaled_value = raw_value * 32'sd1_717_987;
+                QMC_RANGE_8G:  scaled_value = raw_value * 32'sd1_145_325;
+                default:      scaled_value = raw_value * 32'sd286_331;
+            endcase
+            raw_to_gauss_q16 = scaled_value >>> 16;
+        end
+    endfunction
+
+    assign mag_x_gauss_q16 = raw_to_gauss_q16($signed(mag_x));
+    assign mag_y_gauss_q16 = raw_to_gauss_q16($signed(mag_y));
+    assign mag_z_gauss_q16 = raw_to_gauss_q16($signed(mag_z));
+
+    assign range_gauss_q16 =
+        (CFG_RANGE == QMC_RANGE_30G) ? 32'd1_966_080 :
+        (CFG_RANGE == QMC_RANGE_12G) ? 32'd786_432 :
+        (CFG_RANGE == QMC_RANGE_8G)  ? 32'd524_288 :
+                                       32'd131_072;
 
 
     // 20 ms at 50 MHz = 1,000,000 cycles
