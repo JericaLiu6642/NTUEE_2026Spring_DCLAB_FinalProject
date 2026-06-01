@@ -147,7 +147,7 @@ module qmc5883l_ctrl (
     localparam [1:0] CFG_ODR      = QMC_ODR_200HZ;
     localparam [1:0] CFG_OSR      = QMC_OSR_4;
     localparam [1:0] CFG_DSR      = QMC_DSR_1;
-    localparam [1:0] CFG_RANGE    = QMC_RANGE_2G;
+    localparam [1:0] CFG_RANGE    = QMC_RANGE_8G;
     localparam [1:0] CFG_SETRESET = QMC_SETRESET_ON;
 
     localparam [7:0] CTRL1_VALUE = {
@@ -165,18 +165,20 @@ module qmc5883l_ctrl (
 
     // =========================================================================
     // Convert raw two's-complement samples to signed Q16.16 Gauss.
+    // Each reciprocal is pre-scaled by 2^16 so synthesis uses a constant
+    // multiplier and shift instead of a combinational divider.
     // =========================================================================
     function automatic signed [31:0] raw_to_gauss_q16;
         input signed [15:0] raw_value;
         reg signed [47:0] scaled_value;
         begin
-            scaled_value = raw_value * 32'sd65536;
             case (CFG_RANGE)
-                QMC_RANGE_30G: raw_to_gauss_q16 = scaled_value / 32'sd1000;
-                QMC_RANGE_12G: raw_to_gauss_q16 = scaled_value / 32'sd2500;
-                QMC_RANGE_8G:  raw_to_gauss_q16 = scaled_value / 32'sd3750;
-                default:      raw_to_gauss_q16 = scaled_value / 32'sd15000;
+                QMC_RANGE_30G: scaled_value = raw_value * 32'sd4_294_967;
+                QMC_RANGE_12G: scaled_value = raw_value * 32'sd1_717_987;
+                QMC_RANGE_8G:  scaled_value = raw_value * 32'sd1_145_325;
+                default:      scaled_value = raw_value * 32'sd286_331;
             endcase
+            raw_to_gauss_q16 = scaled_value >>> 16;
         end
     endfunction
 

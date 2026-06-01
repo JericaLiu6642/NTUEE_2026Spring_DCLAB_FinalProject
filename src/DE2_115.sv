@@ -378,31 +378,32 @@ always_comb begin
     endcase
 end
 
-function automatic [17:0] gauss_to_led_bar;
-    input signed [31:0] field_gauss_q16;
-    reg [31:0] field_magnitude_q16;
-    reg [63:0] scaled_strength;
-    integer led_count;
+function automatic [17:0] raw_to_led_bar;
+    input signed [15:0] raw_field;
+    reg [15:0] field_magnitude;
+    reg [20:0] scaled_strength;
+    reg [4:0]  led_count;
     begin
-        if (field_gauss_q16 < 0)
-            field_magnitude_q16 = -field_gauss_q16;
+        if (raw_field == 16'sh8000)
+            field_magnitude = 16'd32768;
+        else if (raw_field < 0)
+            field_magnitude = -raw_field;
         else
-            field_magnitude_q16 = field_gauss_q16;
+            field_magnitude = raw_field;
 
-        if (field_magnitude_q16 == 0) begin
-            gauss_to_led_bar = 18'd0;
-        end else if (field_magnitude_q16 >= range_gauss_q16) begin
-            gauss_to_led_bar = 18'h3FFFF;
+        if (field_magnitude == 0) begin
+            raw_to_led_bar = 18'd0;
+        end else if (field_magnitude >= 16'd32768) begin
+            raw_to_led_bar = 18'h3FFFF;
         end else begin
-            scaled_strength = field_magnitude_q16 * 7'd18;
-            led_count = (scaled_strength + range_gauss_q16 - 1'b1) /
-                        range_gauss_q16;
-            gauss_to_led_bar = (18'h1 << led_count) - 1'b1;
+            scaled_strength = field_magnitude * 5'd18 + 15'd32767;
+            led_count = scaled_strength >> 15;
+            raw_to_led_bar = (18'h1 << led_count) - 1'b1;
         end
     end
 endfunction
 
-assign LEDR = gauss_to_led_bar(display_mag_gauss_q16);
+assign LEDR = raw_to_led_bar($signed(display_mag_data));
 
 // 將選中的 16-bit 原始資料以 16 進位輸出至 HEX0 ~ HEX3 七段顯示器
 HexTo7Seg hex_dec_0 (.i_hex(display_mag_data[3:0]),   .o_seg(HEX0));
