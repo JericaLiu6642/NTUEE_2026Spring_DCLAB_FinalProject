@@ -41,7 +41,7 @@ def parse_line(line: str):
 
 
 class LivePlot:
-    def __init__(self, window_seconds: float):
+    def __init__(self, window_seconds: float, absolute: bool):
         try:
             import matplotlib.pyplot as plt
         except ImportError:
@@ -53,67 +53,72 @@ class LivePlot:
 
         self.plt = plt
         self.window_seconds = window_seconds
+        self.absolute = absolute
         self.start_time = time.time()
         self.history = {
             sensor: {
                 "t": deque(),
-                "x": deque(),
-                "y": deque(),
-                "z": deque(),
+                "mag2": deque(),
             }
             for sensor in range(1, 5)
         }
+        self.baseline = {sensor: None for sensor in range(1, 5)}
 
         plt.ion()
-        self.figure, axes = plt.subplots(4, 1, sharex=True, figsize=(10, 8))
-        self.axes = list(axes)
+        self.figure, self.axis = plt.subplots(1, 1, figsize=(10, 6))
         self.lines = {}
 
-        for sensor, axis in enumerate(self.axes, start=1):
-            axis.set_ylabel(f"S{sensor}")
-            axis.grid(True)
-            self.lines[(sensor, "x")] = axis.plot([], [], label="X")[0]
-            self.lines[(sensor, "y")] = axis.plot([], [], label="Y")[0]
-            self.lines[(sensor, "z")] = axis.plot([], [], label="Z")[0]
-            axis.legend(loc="upper right")
+        for sensor in range(1, 5):
+            self.lines[sensor] = self.axis.plot([], [], label=f"S{sensor}")[0]
 
-        self.axes[-1].set_xlabel("Time (s)")
-        self.figure.suptitle("Four Magnetometer Sensor Output")
+        title = "Magnetic Field Magnitude Squared"
+        if not self.absolute:
+            title = "Magnetic Field Magnitude Squared Change"
+        self.axis.set_title(title)
+        self.axis.set_xlabel("Time (s)")
+        if self.absolute:
+            self.axis.set_ylabel("X^2 + Y^2 + Z^2 (counts^2)")
+        else:
+            self.axis.set_ylabel("Delta from baseline (counts^2)")
+        self.axis.grid(True)
+        self.axis.legend(loc="upper right")
         self.figure.tight_layout()
         self.figure.show()
 
     def add_sample(self, parsed):
         now = time.time() - self.start_time
         sensor = parsed["sensor"]
+        mag2 = parsed["x"] ** 2 + parsed["y"] ** 2 + parsed["z"] ** 2
+        if self.baseline[sensor] is None:
+            self.baseline[sensor] = mag2
+        plot_value = mag2 if self.absolute else mag2 - self.baseline[sensor]
         values = self.history[sensor]
         values["t"].append(now)
-        values["x"].append(parsed["x"])
-        values["y"].append(parsed["y"])
-        values["z"].append(parsed["z"])
+        values["mag2"].append(plot_value)
 
         cutoff = now - self.window_seconds
         while values["t"] and values["t"][0] < cutoff:
             values["t"].popleft()
-            values["x"].popleft()
-            values["y"].popleft()
-            values["z"].popleft()
+            values["mag2"].popleft()
 
     def update(self):
         now = time.time() - self.start_time
         x_min = max(0.0, now - self.window_seconds)
         x_max = max(self.window_seconds, now)
 
-        for sensor, axis in enumerate(self.axes, start=1):
+        for sensor in range(1, 5):
             values = self.history[sensor]
-            times = list(values["t"])
-            for component in ("x", "y", "z"):
-                self.lines[(sensor, component)].set_data(
-                    times, list(values[component])
-                )
+            self.lines[sensor].set_data(list(values["t"]), list(values["mag2"]))
 
-            axis.set_xlim(x_min, x_max)
-            axis.relim()
-            axis.autoscale_view(scalex=False, scaley=True)
+        self.axis.set_xlim(x_min, x_max)
+        self.axis.relim()
+        self.axis.autoscale_view(scalex=False, scaley=True)
+        if not self.absolute:
+            ymin, ymax = self.axis.get_ylim()
+            span = ymax - ymin
+            if span < 1000:
+                center = (ymin + ymax) / 2
+                self.axis.set_ylim(center - 500, center + 500)
 
         self.figure.canvas.draw_idle()
         self.plt.pause(0.001)
@@ -137,19 +142,24 @@ def main() -> int:
     parser.add_argument(
         "--plot",
         action="store_true",
-        help="Plot live X/Y/Z traces for all four sensors.",
+        help="Plot live X^2+Y^2+Z^2 traces for all four sensors.",
     )
     parser.add_argument(
         "--plot-window",
         type=float,
-        default=10.0,
+        default=5.0,
         help="Live plot time window in seconds.",
     )
     parser.add_argument(
         "--plot-update-hz",
         type=float,
-        default=60.0,
+        default=80.0,
         help="Maximum Matplotlib redraw rate while plotting.",
+    )
+    parser.add_argument(
+        "--plot-absolute",
+        action="store_true",
+        help="Plot absolute X^2+Y^2+Z^2 instead of baseline-subtracted change.",
     )
     parser.add_argument(
         "--quiet",
@@ -168,7 +178,7 @@ def main() -> int:
             )
         writer.writeheader()
 
-    live_plot = LivePlot(args.plot_window) if args.plot else None
+    live_plot = LivePlot(args.plot_window, args.plot_absolute) if args.plot else None
     last_plot_update = 0.0
     last_csv_flush = time.time()
     plot_update_period = 1.0 / args.plot_update_hz if args.plot_update_hz > 0 else 0.0
