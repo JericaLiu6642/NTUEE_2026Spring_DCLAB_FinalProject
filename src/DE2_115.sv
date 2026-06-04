@@ -738,7 +738,7 @@ vga_timing_640x480 u_vga_timing (
     .vsync_n      (vga_vsync_n)
 );
 
-vga_sensor1_dashboard u_vga_dashboard (
+vga_four_sensor_dashboard u_vga_dashboard (
     .clk                     (CLOCK_50),
     .rst_n                   (key3down),
     .frame_start             (vga_frame_start),

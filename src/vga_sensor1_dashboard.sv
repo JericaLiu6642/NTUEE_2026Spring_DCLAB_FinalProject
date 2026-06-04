@@ -1,4 +1,4 @@
-module vga_sensor1_dashboard (
+module vga_four_sensor_dashboard (
     input  wire               clk,
     input  wire               rst_n,
     input  wire               frame_start,
