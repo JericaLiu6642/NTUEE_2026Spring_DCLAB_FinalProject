@@ -204,7 +204,7 @@ module mag_calibration_manager (
                             state <= S_PREPARE;
                         end
                     end
-ㄇㄠ
+
                     S_PREPARE: begin
                         if (axis_active[axis_index]) begin
                             offset_value[axis_index] <= current_extrema_sum >>> 1;
