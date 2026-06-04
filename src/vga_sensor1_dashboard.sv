@@ -68,7 +68,8 @@ module vga_four_sensor_dashboard (
     reg  [7:0]   character;
     reg  [319:0] line_text;
     reg  [87:0]  status_text;
-    wire [7:0]   font_pixels;
+    reg  [7:0]   font_pixels;
+    reg  [63:0]  font_bitmap;
     wire [9:0]   graph_x = pixel_x - GRAPH_LEFT;
     wire         graph_area = (pixel_x >= GRAPH_LEFT) &&
                               (pixel_x <= GRAPH_RIGHT) &&
@@ -332,11 +333,62 @@ module vga_four_sensor_dashboard (
         character = string_character(line_text, text_column);
     end
 
-    vga_font_rom u_font (
-        .character (character),
-        .glyph_row (glyph_row),
-        .pixels    (font_pixels)
-    );
+    always @* begin
+        case (character)
+            "0": font_bitmap = 64'h3C666E7666663C00;
+            "1": font_bitmap = 64'h1838181818187E00;
+            "2": font_bitmap = 64'h3C66060C18307E00;
+            "3": font_bitmap = 64'h3C66061C06663C00;
+            "4": font_bitmap = 64'h0C1C3C6C7E0C0C00;
+            "5": font_bitmap = 64'h7E607C0606663C00;
+            "6": font_bitmap = 64'h1C30607C66663C00;
+            "7": font_bitmap = 64'h7E66060C18181800;
+            "8": font_bitmap = 64'h3C66663C66663C00;
+            "9": font_bitmap = 64'h3C66663E060C3800;
+            "A": font_bitmap = 64'h183C66667E666600;
+            "B": font_bitmap = 64'h7C66667C66667C00;
+            "C": font_bitmap = 64'h3C66606060663C00;
+            "D": font_bitmap = 64'h786C6666666C7800;
+            "E": font_bitmap = 64'h7E60607C60607E00;
+            "F": font_bitmap = 64'h7E60607C60606000;
+            "G": font_bitmap = 64'h3C66606E66663C00;
+            "H": font_bitmap = 64'h6666667E66666600;
+            "I": font_bitmap = 64'h3C18181818183C00;
+            "L": font_bitmap = 64'h6060606060607E00;
+            "M": font_bitmap = 64'h63777F6B63636300;
+            "N": font_bitmap = 64'h66767E7E6E666600;
+            "O": font_bitmap = 64'h3C66666666663C00;
+            "P": font_bitmap = 64'h7C66667C60606000;
+            "Q": font_bitmap = 64'h3C6666666E3C0E00;
+            "R": font_bitmap = 64'h7C66667C6C666600;
+            "S": font_bitmap = 64'h3C66603C06663C00;
+            "T": font_bitmap = 64'h7E5A181818183C00;
+            "U": font_bitmap = 64'h6666666666663C00;
+            "V": font_bitmap = 64'h66666666663C1800;
+            "W": font_bitmap = 64'h6363636B7F776300;
+            "X": font_bitmap = 64'h66663C183C666600;
+            "Y": font_bitmap = 64'h6666663C18183C00;
+            "Z": font_bitmap = 64'h7E060C1830607E00;
+            "+": font_bitmap = 64'h0018187E18180000;
+            "-": font_bitmap = 64'h0000007E00000000;
+            "=": font_bitmap = 64'h00007E007E000000;
+            ":": font_bitmap = 64'h0018180018180000;
+            ".": font_bitmap = 64'h0000000000181800;
+            "^": font_bitmap = 64'h183C660000000000;
+            default: font_bitmap = 64'd0;
+        endcase
+
+        case (glyph_row)
+            3'd0: font_pixels = font_bitmap[63:56];
+            3'd1: font_pixels = font_bitmap[55:48];
+            3'd2: font_pixels = font_bitmap[47:40];
+            3'd3: font_pixels = font_bitmap[39:32];
+            3'd4: font_pixels = font_bitmap[31:24];
+            3'd5: font_pixels = font_bitmap[23:16];
+            3'd6: font_pixels = font_bitmap[15:8];
+            default: font_pixels = font_bitmap[7:0];
+        endcase
+    end
 
     assign text_pixel_on = active_video &&
                            font_pixels[3'd7 - glyph_column];
