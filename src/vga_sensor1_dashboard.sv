@@ -6,10 +6,22 @@ module vga_sensor1_dashboard (
     input  wire [9:0]         pixel_x,
     input  wire [9:0]         pixel_y,
 
-    input  wire signed [15:0] sensor_x,
-    input  wire signed [15:0] sensor_y,
-    input  wire signed [15:0] sensor_z,
-    input  wire        [31:0] magnitude_squared_gauss_q16,
+    input  wire signed [15:0] sensor1_x,
+    input  wire signed [15:0] sensor1_y,
+    input  wire signed [15:0] sensor1_z,
+    input  wire signed [15:0] sensor2_x,
+    input  wire signed [15:0] sensor2_y,
+    input  wire signed [15:0] sensor2_z,
+    input  wire signed [15:0] sensor3_x,
+    input  wire signed [15:0] sensor3_y,
+    input  wire signed [15:0] sensor3_z,
+    input  wire signed [15:0] sensor4_x,
+    input  wire signed [15:0] sensor4_y,
+    input  wire signed [15:0] sensor4_z,
+    input  wire        [31:0] sensor1_h2_gauss_q16,
+    input  wire        [31:0] sensor2_h2_gauss_q16,
+    input  wire        [31:0] sensor3_h2_gauss_q16,
+    input  wire        [31:0] sensor4_h2_gauss_q16,
     input  wire               calibrated_mode,
     input  wire               calibration_collecting,
     input  wire               calibration_calculating,
@@ -17,24 +29,34 @@ module vga_sensor1_dashboard (
 
     output wire               text_pixel_on,
     output wire               graph_axis_pixel_on,
-    output wire               graph_plot_pixel_on
+    output wire               graph_plot_s1_pixel_on,
+    output wire               graph_plot_s2_pixel_on,
+    output wire               graph_plot_s3_pixel_on,
+    output wire               graph_plot_s4_pixel_on
 );
 
     localparam [9:0] GRAPH_LEFT   = 10'd96;
     localparam [9:0] GRAPH_RIGHT  = 10'd607;
     localparam [9:0] GRAPH_TOP    = 10'd272;
     localparam [9:0] GRAPH_BOTTOM = 10'd447;
-    localparam [31:0] GRAPH_FULL_SCALE_Q16 = 32'd1_048_576; // 16 Gauss^2
+    localparam [31:0] GRAPH_FULL_SCALE_Q16 = 32'd1_048_576; // 16.000 G^2
 
-    reg signed [15:0] snapshot_x;
-    reg signed [15:0] snapshot_y;
-    reg signed [15:0] snapshot_z;
-    reg        [31:0] snapshot_magnitude_squared_gauss_q16;
+    reg signed [15:0] snapshot_s1_x, snapshot_s1_y, snapshot_s1_z;
+    reg signed [15:0] snapshot_s2_x, snapshot_s2_y, snapshot_s2_z;
+    reg signed [15:0] snapshot_s3_x, snapshot_s3_y, snapshot_s3_z;
+    reg signed [15:0] snapshot_s4_x, snapshot_s4_y, snapshot_s4_z;
+    reg        [31:0] snapshot_s1_h2_gauss_q16;
+    reg        [31:0] snapshot_s2_h2_gauss_q16;
+    reg        [31:0] snapshot_s3_h2_gauss_q16;
+    reg        [31:0] snapshot_s4_h2_gauss_q16;
     reg               snapshot_calibrated_mode;
     reg               snapshot_collecting;
     reg               snapshot_calculating;
     reg               snapshot_done;
-    reg        [7:0]  plot_history [0:511];
+    reg        [7:0]  plot_history_s1 [0:511];
+    reg        [7:0]  plot_history_s2 [0:511];
+    reg        [7:0]  plot_history_s3 [0:511];
+    reg        [7:0]  plot_history_s4 [0:511];
     reg        [8:0]  history_write_index;
     reg        [9:0]  history_valid_count;
 
@@ -44,7 +66,7 @@ module vga_sensor1_dashboard (
     wire [2:0] glyph_row    = pixel_y[3:1];
 
     reg  [7:0]   character;
-    reg  [255:0] line_text;
+    reg  [319:0] line_text;
     reg  [87:0]  status_text;
     wire [7:0]   font_pixels;
     wire [9:0]   graph_x = pixel_x - GRAPH_LEFT;
@@ -60,33 +82,68 @@ module vga_sensor1_dashboard (
         history_full
             ? history_write_index + graph_x[8:0]
             : graph_x[8:0] - empty_history_columns[8:0];
-    wire [9:0]   graph_plot_y =
-        GRAPH_BOTTOM - {2'd0, plot_history[graph_history_index]};
+    wire [9:0]   graph_plot_y_s1 =
+        GRAPH_BOTTOM - {2'd0, plot_history_s1[graph_history_index]};
+    wire [9:0]   graph_plot_y_s2 =
+        GRAPH_BOTTOM - {2'd0, plot_history_s2[graph_history_index]};
+    wire [9:0]   graph_plot_y_s3 =
+        GRAPH_BOTTOM - {2'd0, plot_history_s3[graph_history_index]};
+    wire [9:0]   graph_plot_y_s4 =
+        GRAPH_BOTTOM - {2'd0, plot_history_s4[graph_history_index]};
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            snapshot_x               <= 16'sd0;
-            snapshot_y               <= 16'sd0;
-            snapshot_z               <= 16'sd0;
-            snapshot_magnitude_squared_gauss_q16 <= 32'd0;
+            snapshot_s1_x <= 16'sd0;
+            snapshot_s1_y <= 16'sd0;
+            snapshot_s1_z <= 16'sd0;
+            snapshot_s2_x <= 16'sd0;
+            snapshot_s2_y <= 16'sd0;
+            snapshot_s2_z <= 16'sd0;
+            snapshot_s3_x <= 16'sd0;
+            snapshot_s3_y <= 16'sd0;
+            snapshot_s3_z <= 16'sd0;
+            snapshot_s4_x <= 16'sd0;
+            snapshot_s4_y <= 16'sd0;
+            snapshot_s4_z <= 16'sd0;
+            snapshot_s1_h2_gauss_q16 <= 32'd0;
+            snapshot_s2_h2_gauss_q16 <= 32'd0;
+            snapshot_s3_h2_gauss_q16 <= 32'd0;
+            snapshot_s4_h2_gauss_q16 <= 32'd0;
             snapshot_calibrated_mode <= 1'b0;
-            snapshot_collecting      <= 1'b0;
-            snapshot_calculating     <= 1'b0;
-            snapshot_done            <= 1'b0;
-            history_write_index       <= 9'd0;
-            history_valid_count       <= 10'd0;
+            snapshot_collecting <= 1'b0;
+            snapshot_calculating <= 1'b0;
+            snapshot_done <= 1'b0;
+            history_write_index <= 9'd0;
+            history_valid_count <= 10'd0;
         end else if (frame_start) begin
-            snapshot_x               <= sensor_x;
-            snapshot_y               <= sensor_y;
-            snapshot_z               <= sensor_z;
-            snapshot_magnitude_squared_gauss_q16 <=
-                magnitude_squared_gauss_q16;
+            snapshot_s1_x <= sensor1_x;
+            snapshot_s1_y <= sensor1_y;
+            snapshot_s1_z <= sensor1_z;
+            snapshot_s2_x <= sensor2_x;
+            snapshot_s2_y <= sensor2_y;
+            snapshot_s2_z <= sensor2_z;
+            snapshot_s3_x <= sensor3_x;
+            snapshot_s3_y <= sensor3_y;
+            snapshot_s3_z <= sensor3_z;
+            snapshot_s4_x <= sensor4_x;
+            snapshot_s4_y <= sensor4_y;
+            snapshot_s4_z <= sensor4_z;
+            snapshot_s1_h2_gauss_q16 <= sensor1_h2_gauss_q16;
+            snapshot_s2_h2_gauss_q16 <= sensor2_h2_gauss_q16;
+            snapshot_s3_h2_gauss_q16 <= sensor3_h2_gauss_q16;
+            snapshot_s4_h2_gauss_q16 <= sensor4_h2_gauss_q16;
             snapshot_calibrated_mode <= calibrated_mode;
-            snapshot_collecting      <= calibration_collecting;
-            snapshot_calculating     <= calibration_calculating;
-            snapshot_done            <= calibration_done;
-            plot_history[history_write_index] <=
-                magnitude_to_plot_level(magnitude_squared_gauss_q16);
+            snapshot_collecting <= calibration_collecting;
+            snapshot_calculating <= calibration_calculating;
+            snapshot_done <= calibration_done;
+            plot_history_s1[history_write_index] <=
+                magnitude_to_plot_level(sensor1_h2_gauss_q16);
+            plot_history_s2[history_write_index] <=
+                magnitude_to_plot_level(sensor2_h2_gauss_q16);
+            plot_history_s3[history_write_index] <=
+                magnitude_to_plot_level(sensor3_h2_gauss_q16);
+            plot_history_s4[history_write_index] <=
+                magnitude_to_plot_level(sensor4_h2_gauss_q16);
             history_write_index <= history_write_index + 1'b1;
 
             if (!history_full)
@@ -94,30 +151,10 @@ module vga_sensor1_dashboard (
         end
     end
 
-    function automatic [7:0] hex_to_ascii;
-        input [3:0] hex;
+    function automatic [7:0] decimal_digit_ascii;
+        input [3:0] digit;
         begin
-            if (hex < 4'd10)
-                hex_to_ascii = "0" + hex;
-            else
-                hex_to_ascii = "A" + (hex - 4'd10);
-        end
-    endfunction
-
-    function automatic [71:0] q16_to_hex_ascii;
-        input [31:0] value;
-        begin
-            q16_to_hex_ascii = {
-                hex_to_ascii(value[31:28]),
-                hex_to_ascii(value[27:24]),
-                hex_to_ascii(value[23:20]),
-                hex_to_ascii(value[19:16]),
-                ".",
-                hex_to_ascii(value[15:12]),
-                hex_to_ascii(value[11:8]),
-                hex_to_ascii(value[7:4]),
-                hex_to_ascii(value[3:0])
-            };
+            decimal_digit_ascii = "0" + digit;
         end
     endfunction
 
@@ -134,38 +171,104 @@ module vga_sensor1_dashboard (
         end
     endfunction
 
-    function automatic [39:0] signed_word_to_hex_ascii;
-        input signed [15:0] value;
-        reg [15:0] magnitude;
+    function automatic signed [31:0] counts_to_milligauss;
+        input signed [15:0] counts;
+        reg signed [31:0] extended_counts;
         begin
-            if (value < 0) begin
-                magnitude = (~value) + 1'b1;
-                signed_word_to_hex_ascii = {
-                    "-",
-                    hex_to_ascii(magnitude[15:12]),
-                    hex_to_ascii(magnitude[11:8]),
-                    hex_to_ascii(magnitude[7:4]),
-                    hex_to_ascii(magnitude[3:0])
-                };
-            end else begin
-                magnitude = value;
-                signed_word_to_hex_ascii = {
-                    "+",
-                    hex_to_ascii(magnitude[15:12]),
-                    hex_to_ascii(magnitude[11:8]),
-                    hex_to_ascii(magnitude[7:4]),
-                    hex_to_ascii(magnitude[3:0])
-                };
-            end
+            extended_counts = counts;
+            counts_to_milligauss = extended_counts / 32'sd15;
+        end
+    endfunction
+
+    function automatic [47:0] milligauss_to_ascii;
+        input signed [31:0] milligauss;
+        reg [31:0] abs_mg;
+        reg [31:0] saturated_mg;
+        reg [3:0]  ones;
+        reg [3:0]  tenths;
+        reg [3:0]  hundredths;
+        reg [3:0]  thousandths;
+        reg [7:0]  sign_character;
+        begin
+            if (milligauss < 0)
+                abs_mg = -milligauss;
+            else
+                abs_mg = milligauss;
+
+            sign_character = (milligauss < 0) ? "-" : "+";
+            saturated_mg = (abs_mg > 32'd9999) ? 32'd9999 : abs_mg;
+            ones = (saturated_mg / 32'd1000) % 10;
+            tenths = (saturated_mg / 32'd100) % 10;
+            hundredths = (saturated_mg / 32'd10) % 10;
+            thousandths = saturated_mg % 10;
+
+            milligauss_to_ascii = {
+                sign_character,
+                decimal_digit_ascii(ones),
+                ".",
+                decimal_digit_ascii(tenths),
+                decimal_digit_ascii(hundredths),
+                decimal_digit_ascii(thousandths)
+            };
+        end
+    endfunction
+
+    function automatic [47:0] h2_q16_to_ascii;
+        input [31:0] h2_q16;
+        reg [63:0] scaled_h2;
+        reg [31:0] milli_h2;
+        reg [3:0]  tens;
+        reg [3:0]  ones;
+        reg [3:0]  tenths;
+        reg [3:0]  hundredths;
+        reg [3:0]  thousandths;
+        begin
+            scaled_h2 = h2_q16 * 32'd1000;
+            milli_h2 = scaled_h2 >> 16;
+            if (milli_h2 > 32'd99999)
+                milli_h2 = 32'd99999;
+
+            tens = (milli_h2 / 32'd10000) % 10;
+            ones = (milli_h2 / 32'd1000) % 10;
+            tenths = (milli_h2 / 32'd100) % 10;
+            hundredths = (milli_h2 / 32'd10) % 10;
+            thousandths = milli_h2 % 10;
+
+            h2_q16_to_ascii = {
+                decimal_digit_ascii(tens),
+                decimal_digit_ascii(ones),
+                ".",
+                decimal_digit_ascii(tenths),
+                decimal_digit_ascii(hundredths),
+                decimal_digit_ascii(thousandths)
+            };
+        end
+    endfunction
+
+    function automatic [319:0] sensor_line;
+        input [7:0] sensor_digit;
+        input signed [15:0] x_counts;
+        input signed [15:0] y_counts;
+        input signed [15:0] z_counts;
+        input [31:0] h2_q16;
+        begin
+            sensor_line = {
+                "S", sensor_digit,
+                " X", milligauss_to_ascii(counts_to_milligauss(x_counts)),
+                " Y", milligauss_to_ascii(counts_to_milligauss(y_counts)),
+                " Z", milligauss_to_ascii(counts_to_milligauss(z_counts)),
+                " H2 ", h2_q16_to_ascii(h2_q16),
+                {4{" "}}
+            };
         end
     endfunction
 
     function automatic [7:0] string_character;
-        input [255:0] text;
+        input [319:0] text;
         input [5:0]   index;
         begin
-            if (index < 6'd32)
-                string_character = text[255 - (index * 8) -: 8];
+            if (index < 6'd40)
+                string_character = text[319 - (index * 8) -: 8];
             else
                 string_character = " ";
         end
@@ -181,37 +284,49 @@ module vga_sensor1_dashboard (
         else
             status_text = "READY      ";
 
-        line_text = {32{" "}};
+        line_text = {40{" "}};
 
         case (text_row)
-            5'd2:  line_text = {"MAGNETOMETER MONITOR", {12{" "}}};
-            5'd4:  line_text = {
-                "MODE: ",
-                snapshot_calibrated_mode ? "CALIBRATED" : "RAW       ",
-                {16{" "}}
+            5'd1:  line_text = {"QMC5883P GAUSS DASHBOARD", {16{" "}}};
+            5'd3:  line_text = {
+                "MODE ",
+                snapshot_calibrated_mode ? "CAL " : "RAW ",
+                "CALIB ",
+                status_text,
+                {14{" "}}
             };
-            5'd6:  line_text = {"SENSOR 1", {24{" "}}};
-            5'd8:  line_text = {
-                "X = ", signed_word_to_hex_ascii(snapshot_x), {23{" "}}
-            };
-            5'd9:  line_text = {
-                "Y = ", signed_word_to_hex_ascii(snapshot_y), {23{" "}}
-            };
-            5'd10: line_text = {
-                "Z = ", signed_word_to_hex_ascii(snapshot_z), {23{" "}}
-            };
-            5'd11: line_text = {
-                "H2 = ",
-                q16_to_hex_ascii(snapshot_magnitude_squared_gauss_q16),
-                " G2",
-                {15{" "}}
-            };
-            5'd13: line_text = {
-                "CALIBRATION: ", status_text, {8{" "}}
-            };
-            5'd15: line_text = {"H2 GRAPH: 0 TO 16 G2", {11{" "}}};
-            5'd28: line_text = {"TIME: 8.6 SECONDS", {15{" "}}};
-            default: line_text = {32{" "}};
+            5'd5:  line_text = {"AXES IN GAUSS, H2 IN GAUSS^2", {12{" "}}};
+            5'd7:  line_text = sensor_line(
+                "1",
+                snapshot_s1_x,
+                snapshot_s1_y,
+                snapshot_s1_z,
+                snapshot_s1_h2_gauss_q16
+            );
+            5'd9:  line_text = sensor_line(
+                "2",
+                snapshot_s2_x,
+                snapshot_s2_y,
+                snapshot_s2_z,
+                snapshot_s2_h2_gauss_q16
+            );
+            5'd11: line_text = sensor_line(
+                "3",
+                snapshot_s3_x,
+                snapshot_s3_y,
+                snapshot_s3_z,
+                snapshot_s3_h2_gauss_q16
+            );
+            5'd13: line_text = sensor_line(
+                "4",
+                snapshot_s4_x,
+                snapshot_s4_y,
+                snapshot_s4_z,
+                snapshot_s4_h2_gauss_q16
+            );
+            5'd15: line_text = {"H2 GRAPH 0-16 G^2  S1 S2 S3 S4", {10{" "}}};
+            5'd28: line_text = {"S1 GREEN S2 RED S3 BLUE S4 YELLOW", {7{" "}}};
+            default: line_text = {40{" "}};
         endcase
 
         character = string_character(line_text, text_column);
@@ -228,9 +343,21 @@ module vga_sensor1_dashboard (
     assign graph_axis_pixel_on = active_video && graph_area &&
                                  ((pixel_x == GRAPH_LEFT) ||
                                   (pixel_y == GRAPH_BOTTOM));
-    assign graph_plot_pixel_on = active_video && graph_area &&
-                                 graph_history_valid &&
-                                 ((pixel_y == graph_plot_y) ||
-                                  (pixel_y == graph_plot_y + 1'b1));
+    assign graph_plot_s1_pixel_on = active_video && graph_area &&
+                                    graph_history_valid &&
+                                    ((pixel_y == graph_plot_y_s1) ||
+                                     (pixel_y == graph_plot_y_s1 + 1'b1));
+    assign graph_plot_s2_pixel_on = active_video && graph_area &&
+                                    graph_history_valid &&
+                                    ((pixel_y == graph_plot_y_s2) ||
+                                     (pixel_y == graph_plot_y_s2 + 1'b1));
+    assign graph_plot_s3_pixel_on = active_video && graph_area &&
+                                    graph_history_valid &&
+                                    ((pixel_y == graph_plot_y_s3) ||
+                                     (pixel_y == graph_plot_y_s3 + 1'b1));
+    assign graph_plot_s4_pixel_on = active_video && graph_area &&
+                                    graph_history_valid &&
+                                    ((pixel_y == graph_plot_y_s4) ||
+                                     (pixel_y == graph_plot_y_s4 + 1'b1));
 
 endmodule
