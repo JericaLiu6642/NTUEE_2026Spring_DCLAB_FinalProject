@@ -49,7 +49,10 @@ set_global_assignment -name SYSTEMVERILOG_FILE i2c_master.sv
 set_global_assignment -name SYSTEMVERILOG_FILE unsigned_divider.sv
 set_global_assignment -name SYSTEMVERILOG_FILE mag_calibration_manager.sv
 set_global_assignment -name SYSTEMVERILOG_FILE mag_calibrator.sv
+set_global_assignment -name SYSTEMVERILOG_FILE mag_magnitude_squared.sv
 set_global_assignment -name SYSTEMVERILOG_FILE lcd_ctrl.sv
+set_global_assignment -name SYSTEMVERILOG_FILE uart_tx.sv
+set_global_assignment -name SYSTEMVERILOG_FILE mag_uart_streamer.sv
 set_global_assignment -name SYSTEMVERILOG_FILE vga_timing_640x480.sv
 set_global_assignment -name SYSTEMVERILOG_FILE vga_font_rom.sv
 set_global_assignment -name SYSTEMVERILOG_FILE vga_sensor1_dashboard.sv

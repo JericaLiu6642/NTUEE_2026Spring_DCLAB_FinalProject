@@ -26,11 +26,13 @@ module vga_font_rom (
             "E": bitmap = 64'h7E60607C60607E00;
             "F": bitmap = 64'h7E60607C60606000;
             "G": bitmap = 64'h3C66606E66663C00;
+            "H": bitmap = 64'h6666667E66666600;
             "I": bitmap = 64'h3C18181818183C00;
             "L": bitmap = 64'h6060606060607E00;
             "M": bitmap = 64'h63777F6B63636300;
             "N": bitmap = 64'h66767E7E6E666600;
             "O": bitmap = 64'h3C66666666663C00;
+            "P": bitmap = 64'h7C66667C60606000;
             "R": bitmap = 64'h7C66667C6C666600;
             "S": bitmap = 64'h3C66603C06663C00;
             "T": bitmap = 64'h7E5A181818183C00;
@@ -44,6 +46,7 @@ module vga_font_rom (
             "-": bitmap = 64'h0000007E00000000;
             "=": bitmap = 64'h00007E007E000000;
             ":": bitmap = 64'h0018180018180000;
+            ".": bitmap = 64'h0000000000181800;
             default: bitmap = 64'd0;
         endcase
 
