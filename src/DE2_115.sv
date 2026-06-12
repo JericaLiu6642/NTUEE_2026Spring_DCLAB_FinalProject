@@ -315,6 +315,7 @@ qmc5883l_ctrl u_qmc_4 (
 wire               calibration_collecting;
 wire               calibration_calculating;
 wire               calibration_done;
+wire               calibration_error;
 wire signed [15:0] cal_s1_offset_x, cal_s1_offset_y, cal_s1_offset_z;
 wire signed [15:0] cal_s2_offset_x, cal_s2_offset_y, cal_s2_offset_z;
 wire signed [15:0] cal_s3_offset_x, cal_s3_offset_y, cal_s3_offset_z;
@@ -349,6 +350,7 @@ mag_calibration_manager u_calibration_manager (
     .collecting       (calibration_collecting),
     .calculating      (calibration_calculating),
     .calibration_done (calibration_done),
+    .calibration_error (calibration_error),
 
     .s1_offset_x (cal_s1_offset_x), .s1_offset_y (cal_s1_offset_y),
     .s1_offset_z (cal_s1_offset_z),
@@ -423,6 +425,7 @@ mag_calibrator u_calibrator_4 (
 // SW[1:0]    = selected axis: 00, 01, 10 select X, Y, Z.
 // LEDG[0]    = all active sensors initialized successfully.
 // LEDG[3:1]  = calibration collecting, calculating, done.
+// LEDG[5]    = calibration rejected because one or more axes lacked coverage.
 // LEDR[17:0] = absolute selected-axis field strength relative to configured range.
 logic signed [15:0] selected_mag_x, selected_mag_y, selected_mag_z;
 logic signed [15:0] selected_cal_mag_x, selected_cal_mag_y, selected_cal_mag_z;
@@ -469,7 +472,9 @@ assign LEDG[0]   = ((qmc_dbg_init_done & ACTIVE_SENSOR_MASK) ==
 assign LEDG[1]   = calibration_collecting;
 assign LEDG[2]   = calibration_calculating;
 assign LEDG[3]   = calibration_done;
-assign LEDG[8:4] = 5'd0;
+assign LEDG[4]   = 1'b0;
+assign LEDG[5]   = calibration_error;
+assign LEDG[8:6] = 3'd0;
 
 // =====================================================================
 // 觀察與驗證機制：SW[3:2] 選擇感測器，SW[1:0] 選擇 X, Y, Z 軸
