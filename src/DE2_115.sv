@@ -194,6 +194,7 @@ wire [15:0] mag2_x, mag2_y, mag2_z;
 wire [15:0] mag3_x, mag3_y, mag3_z;
 wire [15:0] mag4_x, mag4_y, mag4_z;
 wire [3:0]  qmc_sample_valid;
+wire        carrier_result_valid;
 localparam [3:0] ACTIVE_SENSOR_MASK = 4'b1111;
 wire [4:0]  qmc_dbg_state [0:3];
 wire [3:0]  qmc_dbg_err;
@@ -472,7 +473,7 @@ assign LEDG[0]   = ((qmc_dbg_init_done & ACTIVE_SENSOR_MASK) ==
 assign LEDG[1]   = calibration_collecting;
 assign LEDG[2]   = calibration_calculating;
 assign LEDG[3]   = calibration_done;
-assign LEDG[4]   = 1'b0;
+assign LEDG[4]   = carrier_result_valid;
 assign LEDG[5]   = calibration_error;
 assign LEDG[8:6] = 3'd0;
 
@@ -703,32 +704,81 @@ wire signed [15:0] vga_sensor4_y =
 wire signed [15:0] vga_sensor4_z =
     use_calibrated_display ? cal_mag4_z : $signed(mag4_z);
 
-mag_magnitude_squared u_sensor1_magnitude_squared (
+// Coherent 75 Hz magnetic-field extraction.  All four QMC controllers share
+// the same clock and read schedule, so their valid pulses form one sample tick.
+reg carrier_sample_tick;
+wire signed [15:0] carrier_sine_q15;
+wire signed [15:0] carrier_cosine_q15;
+wire [3:0] carrier_sensor_result_valid;
+assign carrier_result_valid = &carrier_sensor_result_valid;
+
+// Delay valid by one clock so the lock-in sees the X/Y/Z values assembled on
+// the preceding clock edge rather than the previous sensor sample.
+always @(posedge CLOCK_50 or negedge key3down) begin
+    if (!key3down)
+        carrier_sample_tick <= 1'b0;
+    else
+        carrier_sample_tick <= &qmc_sample_valid;
+end
+
+carrier_reference_75hz u_carrier_reference_75hz (
+    .clk         (CLOCK_50),
+    .rst_n       (key3down),
+    .sample_tick (carrier_sample_tick),
+    .sine_q15    (carrier_sine_q15),
+    .cosine_q15  (carrier_cosine_q15)
+);
+
+mag_lockin_vector_75hz u_sensor1_lockin_75hz (
+    .clk                           (CLOCK_50),
+    .rst_n                         (key3down),
+    .sample_tick                   (carrier_sample_tick),
     .field_x_counts                (vga_sensor1_x),
     .field_y_counts                (vga_sensor1_y),
     .field_z_counts                (vga_sensor1_z),
-    .magnitude_squared_gauss_q16   (vga_sensor1_magnitude_squared_gauss_q16)
+    .sine_q15                      (carrier_sine_q15),
+    .cosine_q15                    (carrier_cosine_q15),
+    .carrier_l2_squared_gauss_q16  (vga_sensor1_magnitude_squared_gauss_q16),
+    .result_valid                  (carrier_sensor_result_valid[0])
 );
 
-mag_magnitude_squared u_sensor2_magnitude_squared (
+mag_lockin_vector_75hz u_sensor2_lockin_75hz (
+    .clk                           (CLOCK_50),
+    .rst_n                         (key3down),
+    .sample_tick                   (carrier_sample_tick),
     .field_x_counts                (vga_sensor2_x),
     .field_y_counts                (vga_sensor2_y),
     .field_z_counts                (vga_sensor2_z),
-    .magnitude_squared_gauss_q16   (vga_sensor2_magnitude_squared_gauss_q16)
+    .sine_q15                      (carrier_sine_q15),
+    .cosine_q15                    (carrier_cosine_q15),
+    .carrier_l2_squared_gauss_q16  (vga_sensor2_magnitude_squared_gauss_q16),
+    .result_valid                  (carrier_sensor_result_valid[1])
 );
 
-mag_magnitude_squared u_sensor3_magnitude_squared (
+mag_lockin_vector_75hz u_sensor3_lockin_75hz (
+    .clk                           (CLOCK_50),
+    .rst_n                         (key3down),
+    .sample_tick                   (carrier_sample_tick),
     .field_x_counts                (vga_sensor3_x),
     .field_y_counts                (vga_sensor3_y),
     .field_z_counts                (vga_sensor3_z),
-    .magnitude_squared_gauss_q16   (vga_sensor3_magnitude_squared_gauss_q16)
+    .sine_q15                      (carrier_sine_q15),
+    .cosine_q15                    (carrier_cosine_q15),
+    .carrier_l2_squared_gauss_q16  (vga_sensor3_magnitude_squared_gauss_q16),
+    .result_valid                  (carrier_sensor_result_valid[2])
 );
 
-mag_magnitude_squared u_sensor4_magnitude_squared (
+mag_lockin_vector_75hz u_sensor4_lockin_75hz (
+    .clk                           (CLOCK_50),
+    .rst_n                         (key3down),
+    .sample_tick                   (carrier_sample_tick),
     .field_x_counts                (vga_sensor4_x),
     .field_y_counts                (vga_sensor4_y),
     .field_z_counts                (vga_sensor4_z),
-    .magnitude_squared_gauss_q16   (vga_sensor4_magnitude_squared_gauss_q16)
+    .sine_q15                      (carrier_sine_q15),
+    .cosine_q15                    (carrier_cosine_q15),
+    .carrier_l2_squared_gauss_q16  (vga_sensor4_magnitude_squared_gauss_q16),
+    .result_valid                  (carrier_sensor_result_valid[3])
 );
 
 vga_timing_640x480 u_vga_timing (
