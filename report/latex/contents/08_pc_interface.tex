@@ -42,4 +42,6 @@ python3 src_python/piano_key_monitor.py COM5 \
 
 The monitor starts a note when the corresponding press bit becomes 1 and stops it when the press bit returns to 0. With the pygame audio backend, the sound is played as a held note with low-latency start and exact stop on release.
 
-\placeholderfigure{Insert a screenshot of the Python piano GUI showing highlighted keys.}{PC piano GUI receiving FPGA-computed key states.}{fig:piano_gui}{figures/piano_gui.png}
+In \code{piano\_key\_monitor.py}, serial reception runs in a background thread so the Tkinter GUI does not block while waiting for UART bytes. The reader thread accepts only lines matching the \code{KEY,75,...,45,...} format and pushes parsed events into a queue. The GUI periodically polls this queue, updates the highlighted keys, and calls the audio backend before redrawing the canvas so note start and stop are not delayed by screen updates.
+
+\placeholderfigure{Insert a screenshot of the Python piano GUI showing highlighted keys.}{PC piano GUI receiving FPGA-computed key states.}{fig:piano_gui}{figures/piano_gui_update.png}

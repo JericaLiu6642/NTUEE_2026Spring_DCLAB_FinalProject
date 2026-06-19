@@ -32,11 +32,11 @@ For example, if the platform is centered at global key 12, then the five local i
     \caption{Example local-to-global mapping for platform center 12.}
     \label{tab:local_global_example}
     \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{c c c c c}
+    \begin{tabular}{c c c c c c}
         \toprule
-        $k_{\mathrm{local}}=-2$ & $-1$ & $0$ & $+1$ & $+2$ \\
+        $k_{\mathrm{local}}$ & $-2$ & $-1$ & $0$ & $+1$ & $+2$ \\
         \midrule
-        10 & 11 & 12 & 13 & 14 \\
+        $k_{\mathrm{global}}$ & 10 & 11 & 12 & 13 & 14 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -100,5 +100,11 @@ After a movement completes, the tracker waits:
 \end{equation}
 
 This cooldown prevents immediate repeated movement. However, classification output can still be affected by stale samples in the lock-in and $H^2$ averaging windows immediately after movement. In practice, this can cause occasional $\pm 1$ key errors if a press occurs immediately after the platform stops.
+
+\subsection{Tracker Implementation}
+
+The module \code{platform\_tracker\_controller.sv} latches the latest 75 Hz and 45 Hz classifier results separately. A movement decision is evaluated only after both fingers have produced fresh classifications, so the tracker does not combine a new key from one finger with an old key from the other. The local key IDs from the classifier are converted to signed local indices by subtracting the local center ID 2, giving the range $-2$ to $+2$.
+
+Before issuing a move, the controller checks several blocking conditions: tracking must be enabled, both signal strengths must exceed the minimum threshold, the 75 Hz finger must not appear to the right of the 45 Hz finger, the stepper must not already be busy, the cooldown counter must be zero, and the platform center must remain within keys 2 through 12. If the requested direction passes these checks for \code{STABLE\_COUNT}=3 consecutive fresh decisions, the tracker emits one \code{move\_pulse}, sets the direction command, and updates the stored platform center by one key. The separate \code{stepper\_drv8825\_controller.sv} module then converts that pulse into 100 physical STEP pulses.
 
 \placeholderfigure{Insert a diagram showing the local five-key window sliding across the 15-key global keyboard.}{Sliding platform extends local sensing to global key tracking.}{fig:platform_tracking}{figures/platform_tracking.png}

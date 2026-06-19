@@ -37,6 +37,8 @@ Each QMC5883P controller checks the chip ID, configures the sensor for continuou
 
 The controller emits a one-clock \code{sample\_valid} pulse after each fresh sensor sample. Since the three I2C controllers do not necessarily finish in the same clock cycle, the top-level design collects valid pulses into a mask. A new lock-in sample is accepted only after all active sensors have produced a new sample.
 
+In implementation, the three sensor controllers run in parallel instead of being multiplexed through one shared I2C controller. The top-level \code{DE2\_115.sv} module latches each sensor result when its valid pulse arrives, then clears the collection mask only after all three sensors have updated. This prevents the lock-in filter from mixing a new sample from one sensor with old samples from the other sensors.
+
 \subsection{Magnetometer Calibration}
 
 The calibration stage compensates for sensor offset and axis-scale mismatch. During calibration, the user rotates the complete sensor assembly. The FPGA records the maximum and minimum value for each active sensor axis:
@@ -65,5 +67,9 @@ The calibrated output is then
 \end{equation}
 
 This correction is implemented on FPGA. No Python calibration is needed during the final runtime.
+
+\subsection{Streaming Control Style}
+
+Most of the FPGA pipeline is controlled by one-clock valid pulses. A module latches its input when the upstream \code{valid} signal is asserted, performs its internal multi-cycle calculation if needed, then emits a new \code{valid} pulse for the next stage. This style is used for sensor readout, lock-in output, $H^2$ averaging, LUT classification, platform tracking, and UART streaming. It keeps the modules independent while still allowing slower blocks, such as division and ROM scanning, to take multiple clock cycles.
 
 \placeholderfigure{Insert a diagram of the FPGA datapath: I2C readout, calibration, lock-in, H2 averaging, classifier, platform tracker, UART.}{FPGA datapath architecture.}{fig:fpga_datapath}{figures/fpga_datapath.png}

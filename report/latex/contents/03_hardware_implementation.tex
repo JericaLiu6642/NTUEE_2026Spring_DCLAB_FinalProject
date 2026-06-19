@@ -5,6 +5,10 @@
 
 The project uses AC electromagnets instead of permanent magnets for the final two-finger system. The reason is that AC excitation allows frequency multiplexing: one finger can be driven at 75 Hz and the other at 45 Hz. The FPGA can then separate the two fingers by filtering at each frequency. This follows the same general principle used by Finexus, where multiple electromagnets are distinguished by their operating frequencies \cite{chen2016finexus}.
 
+Each magnetic finger uses a hand-wound electromagnet. The coil is made by winding enameled copper wire around a ferrite core, with about 250 turns per electromagnet. The ferrite core increases the magnetic flux compared with an air-core coil, while the insulated enameled wire allows many tight turns without shorting adjacent windings. The number of turns was chosen as a practical compromise: more turns increase magnetomotive force for the same current, but also increase resistance, physical size, and heating.
+
+The coil was designed with an impedance target of roughly $4~\Omega$, matching the practical low-impedance load region of the TPA3110D2 audio power amplifier. If the coil impedance is too low, the amplifier and power supply must deliver excessive current, causing heat and possible protection shutdown. If the impedance is too high, the current becomes too small and the magnetometer signal amplitude decreases. The final 250-turn ferrite-core coil provided a usable magnetic field while keeping the amplifier load reasonable.
+
 The analog magnetic-source chain is:
 
 \begin{lstlisting}

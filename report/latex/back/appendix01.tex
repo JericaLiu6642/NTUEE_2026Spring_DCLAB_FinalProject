@@ -74,10 +74,50 @@ The main FPGA source files are located in \code{src/}. The main Python utility f
 The submitted repository is organized as follows:
 
 \begin{lstlisting}
-final_project/
+team07_final/
 |-- README.md
+|-- report.pdf
 |-- src/
+|   |-- DE2_115.qsf
+|   |-- DE2_115.sv
+|   |-- button_debouncer.sv
+|   |-- carrier_reference_45hz.sv
+|   |-- carrier_reference_75hz.sv
+|   |-- h2_average_3sensor.sv
+|   |-- h2_lut_classifier_3sensor.sv
+|   |-- h45_lut_3sensor.mem
+|   |-- h75_lut_3sensor.mem
+|   |-- i2c_master.sv
+|   |-- lcd_ctrl.sv
+|   |-- mag_calibration_manager.sv
+|   |-- mag_calibrator.sv
+|   |-- mag_lockin_vector_75hz.sv
+|   |-- mag_magnitude_squared.sv
+|   |-- mag_uart_streamer.sv
+|   |-- platform_tracker_controller.sv
+|   |-- qmc5883p_ctrl.sv
+|   |-- stepper_drv8825_controller.sv
+|   |-- uart_tx.sv
+|   |-- unsigned_divider.sv
+|   |-- vga_font_rom.sv
+|   |-- vga_sensor1_dashboard.sv
+|   `-- vga_timing_640x480.sv
 `-- src_python/
+    |-- __pycache__/
+    |   |-- piano_key_monitor.cpython-38.pyc
+    |   `-- read_mag_uart.cpython-310.pyc
+    |-- animate_h2_keys.py
+    |-- classify_h2_lut.py
+    |-- collect_h2_lut.py
+    |-- export_lut_mem.py
+    |-- h45_lut.csv
+    |-- h45_lut_old.csv
+    |-- h75_lut.csv
+    |-- h75_lut_old.csv
+    |-- piano_key_monitor.py
+    |-- read_key_uart.py
+    |-- read_mag_uart.py
+    `-- track_platform_stepper.py
 \end{lstlisting}
 
-The Verilog/SystemVerilog files in \code{src/} implement the FPGA runtime system. The Python files in \code{src\_python/} are used for LUT collection, LUT export, debugging, and the final PC piano interface. The final report source and generated PDF are stored in \code{report/latex/}.
+The Verilog/SystemVerilog files in \code{src/} implement the FPGA runtime system. The Python files in \code{src\_python/} are used for LUT collection, LUT export, debugging, and the final PC piano interface.

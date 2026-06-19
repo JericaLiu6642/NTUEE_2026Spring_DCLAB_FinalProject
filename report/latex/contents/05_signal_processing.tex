@@ -39,6 +39,8 @@ The same operation is applied to the X, Y, and Z axes. The lock-in output energy
     \label{eq:h2_lockin}
 \end{equation}
 
+The module \code{mag\_lockin\_vector\_75hz.sv} implements this as a rolling coherent window. For every accepted sample, the FPGA multiplies each calibrated axis by the Q15 sine and cosine references, stores the six products in window memory, adds the new products to the accumulators, and subtracts the products leaving the window. The product history arrays are marked for M9K RAM inference so the 100-sample window does not consume a large number of logic registers. After the accumulators are updated, a small state machine squares the six accumulated values one at a time, sums them, applies the fixed scaling shift, saturates on overflow, and asserts \code{result\_valid}.
+
 \subsection{Why the Lock-In Window Filters the Signal}
 
 When the input signal contains the same frequency as the reference, the product accumulates coherently. When the signal is DC, noise, or another frequency, the positive and negative products tend to cancel. Therefore, the 75 Hz extractor responds strongly to the 75 Hz electromagnet and weakly to the 45 Hz electromagnet. The 45 Hz extractor behaves similarly for the other finger.
@@ -74,3 +76,5 @@ After the lock-in stage, the FPGA applies a second, simpler rolling average befo
 \end{lstlisting}
 
 This averaging improves stability but can briefly retain old samples after the platform moves. This effect is discussed in Section~\ref{sec:results_discussion}.
+
+The averaging module uses the same rolling-sum idea as the lock-in filter. It keeps a 10-entry circular buffer for each sensor, subtracts the overwritten value, adds the newest $H^2$ value, and divides the maintained sum by 10 when the window is full. Therefore each new averaged output is produced with constant work instead of recomputing the full 10-sample sum from scratch.

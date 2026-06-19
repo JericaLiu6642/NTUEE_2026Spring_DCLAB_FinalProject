@@ -133,3 +133,9 @@ The strength term is stored as Q16:
 \end{equation}
 
 During classification, the FPGA scans all 45 LUT entries. For each key, it keeps the minimum entry score among all sample points and z layers. The predicted local key is the key with the lowest final score.
+
+\subsection{Classifier State Machine Implementation}
+
+The classifier is implemented in \code{h2\_lut\_classifier\_3sensor.sv} as a multi-cycle finite-state machine. When \code{start} is asserted, the module latches the three live $H^2$ values and computes their total. It then uses the shared \code{unsigned\_divider.sv} block three times to calculate the Q30 ratios $f_1$, $f_2$, and $f_3$. The logarithmic strength feature is approximated in hardware by finding the base-2 exponent of the total strength and adding a small mantissa lookup correction in Q16.
+
+After the live feature vector is ready, the classifier reads the 160-bit ROM entries initialized from the \code{.mem} LUT file. For each entry, it extracts the key ID, three Q30 ratio fields, and Q16 log-strength field. The state machine computes absolute differences, squares one component per cycle, adds the three ratio scores, adds the weighted strength score, and updates the best score stored for that key. After all 45 entries have been scanned, a final pass compares the five per-key best scores and outputs the minimum-score key with a one-clock \code{valid} pulse.
